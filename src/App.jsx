@@ -1,19 +1,26 @@
 import './App.css'
 import { useState } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import Gallery from './gallery';
 import Welcome from './welcome';
 import TakePhoto from './componets/takephoto/takePhoto';
 
 function App() {
-  const [showGallery, setShowGallery] = useState(false);
   const [takingPhoto, setTakingPhoto] = useState(false);
   const [capturedImage, setCapturedImage] = useState(null);
+  const navigate = useNavigate();
 
-  const handleEnter = () => setShowGallery(true);
+  const handleEnter = () => {
+    navigate("/album");
+  };
 
-  const handleTakePhoto = () => setTakingPhoto(true);
+  const handleTakePhoto = () => {
+    setTakingPhoto(true);
+  };
 
-  const handleCancelPhoto = () => setTakingPhoto(false);
+  const handleCancelPhoto = () => {
+    setTakingPhoto(false);
+  };
 
   const handleCapturePhoto = (dataUrl) => {
     setCapturedImage(dataUrl);
@@ -25,15 +32,19 @@ function App() {
 
   return (
     <>
-      {!showGallery && !takingPhoto && (
-        <Welcome onEnter={handleEnter} onTakePhoto={handleTakePhoto} />
-      )}
-
       {takingPhoto && (
         <TakePhoto onCancel={handleCancelPhoto} onCapture={handleCapturePhoto} />
       )}
 
-      {showGallery && <Gallery />}
+      {!takingPhoto && (
+        <Routes>
+          <Route
+            path="/"
+            element={<Welcome onEnter={handleEnter} onTakePhoto={handleTakePhoto} />}
+          />
+          <Route path="/album" element={<Gallery />} />
+        </Routes>
+      )}
 
       {/* Opcional: mostrar la imagen capturada abajo para debug */}
       {capturedImage && (
