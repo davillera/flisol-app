@@ -127,7 +127,7 @@ export default function Gallery() {
         <p className="text-center text-white">No hay imágenes para mostrar.</p>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {images.map((imgUrl, index) => (
+          {[...image].reverse().map((imgUrl, index) => (
             <div key={index} className="bg-white rounded shadow overflow-hidden">
               <img
                 src={imgUrl}
