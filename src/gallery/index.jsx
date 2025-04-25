@@ -1,34 +1,74 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 export default function Gallery() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const fetchImages = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("https://flisolfunctionapp.azurewebsites.net/api/getimages");
+
+      if (!response.ok) {
+        throw new Error(`Error en la respuesta: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+
+      if (Array.isArray(data.images)) {
+        setImages(data.images);
+      } else {
+        throw new Error("Respuesta inválida: no contiene 'images' como arreglo");
+      }
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchImages() {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetch("https://flisolfunctionapp.azurewebsites.net/api/getimages");
-        if (!response.ok) {
-          throw new Error(`Error en la respuesta: ${response.status} ${response.statusText}`);
-        }
-        const data = await response.json();
-        if (data.images && Array.isArray(data.images)) {
-          setImages(data.images);
-        } else {
-          throw new Error("Respuesta no contiene el campo 'images' o no es un arreglo");
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
     fetchImages();
   }, []);
+
+  const handleUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      setUploading(true);
+
+      const response = await fetch("https://flisolfunctionapp.azurewebsites.net/api/uploadimage", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Error al subir la imagen");
+      }
+
+      const data = await response.json();
+
+      // ✅ Asegúrate que 'imageUrl' venga como string
+      if (data.imageUrl) {
+        setImages((prev) => [...prev, data.imageUrl]);
+      } else {
+        throw new Error("Respuesta inválida al subir imagen");
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -40,27 +80,62 @@ export default function Gallery() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen text-red-600 font-semibold">
-        Error al cargar imágenes: {error}
+      <div className="flex flex-col items-center justify-center h-screen text-red-600 font-semibold text-center px-4">
+        <p>Error al cargar imágenes:</p>
+        <p className="text-sm">{error}</p>
+        <button
+          onClick={fetchImages}
+          className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="p-4 bg-blue min-h-screen">
-      <h2 className="text-white text-2xl font-bold mb-4 text-center">Álbum Virtual</h2>
-      {images.length === 0 ? (
-        <p className="text-white text-center">No hay imágenes para mostrar.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-          {images.map((url, index) => (
-            <img
-              key={index}
-              src={url}
-              alt={`Momento del evento ${index + 1}`}
-              className="rounded-lg shadow-md object-cover w-full h-48"
-              loading="lazy"
+    <div className="p-4 bg-blue-800 min-h-screen text-white">
+      <div className="flex flex-col items-center mb-6">
+        <h2 className="text-3xl font-bold mb-2 text-center">📸 Álbum Virtual</h2>
+        <div className="flex gap-4 flex-wrap justify-center">
+          <Link
+            to="/"
+            className="bg-white text-blue-700 font-semibold px-4 py-2 rounded shadow hover:bg-gray-100"
+          >
+            Volver a cámara
+          </Link>
+          <button
+            onClick={fetchImages}
+            className="bg-white text-blue-700 font-semibold px-4 py-2 rounded shadow hover:bg-gray-100"
+          >
+            Recargar álbum
+          </button>
+          <label className="cursor-pointer bg-white text-blue-700 font-semibold px-4 py-2 rounded shadow hover:bg-gray-100">
+            {uploading ? "Subiendo..." : "Subir nueva imagen"}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleUpload}
+              className="hidden"
+              disabled={uploading}
             />
+          </label>
+        </div>
+      </div>
+
+      {images.length === 0 ? (
+        <p className="text-center text-white">No hay imágenes para mostrar.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {images.map((imgUrl, index) => (
+            <div key={index} className="bg-white rounded shadow overflow-hidden">
+              <img
+                src={imgUrl}
+                alt={`Foto ${index + 1}`}
+                className="object-cover w-full h-48"
+                loading="lazy"
+              />
+            </div>
           ))}
         </div>
       )}

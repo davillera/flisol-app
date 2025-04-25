@@ -13,7 +13,7 @@ function Welcome({ onEnter, onTakePhoto }) {
       }}
     >
       <h1 className="text-4xl font-extrabold mb-6 text-center drop-shadow-lg max-w-md">
-        Comparte tus mejores momentos del evento
+        Comparte tus mejores momentos de la FliSol2025
       </h1>
 
       <div className="flex flex-col sm:flex-row gap-6 w-full max-w-md">

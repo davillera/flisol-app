@@ -45,13 +45,7 @@ function App() {
           <Route path="/album" element={<Gallery />} />
         </Routes>
       )}
-
-      {/* Opcional: mostrar la imagen capturada abajo para debug */}
-      {capturedImage && (
-        <div className="fixed bottom-4 right-4 border border-gray-300 rounded overflow-hidden shadow-lg w-24 h-24">
-          <img src={capturedImage} alt="Capturada" className="object-cover w-full h-full" />
-        </div>
-      )}
+      
     </>
   );
 }

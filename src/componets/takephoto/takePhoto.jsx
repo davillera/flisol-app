@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function TakePhoto({ onCancel, onCapture }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const [hasPhoto, setHasPhoto] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [facingMode, setFacingMode] = useState("environment"); // 🌟 trasera por defecto
+  const navigate = useNavigate();
 
   useEffect(() => {
     async function startCamera() {
-      if (
-        navigator.mediaDevices &&
-        typeof navigator.mediaDevices.getUserMedia === "function"
-      ) {
+      if (navigator.mediaDevices?.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
+            video: { facingMode },
             audio: false,
           });
           streamRef.current = stream;
@@ -28,6 +29,11 @@ export default function TakePhoto({ onCancel, onCapture }) {
         alert("Tu navegador no soporta acceso a cámara.");
       }
     }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+    }
+
     startCamera();
 
     return () => {
@@ -35,7 +41,7 @@ export default function TakePhoto({ onCancel, onCapture }) {
         streamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
-  }, []);
+  }, [facingMode]);
 
   const handleCancel = () => {
     if (streamRef.current) {
@@ -64,10 +70,45 @@ export default function TakePhoto({ onCancel, onCapture }) {
     setHasPhoto(true);
   };
 
-  const confirmPhoto = () => {
+  const confirmPhoto = async () => {
     if (!canvasRef.current) return;
-    const dataUrl = canvasRef.current.toDataURL("image/png");
-    onCapture(dataUrl);
+    setUploading(true);
+
+    canvasRef.current.toBlob(async (blob) => {
+      if (!blob) {
+        alert("Error al generar la imagen.");
+        setUploading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch("https://flisolfunctionapp.azurewebsites.net/api/uploadimage", {
+          method: "POST",
+          headers: {
+            "Content-Type": blob.type,
+          },
+          body: blob,
+        });
+
+        if (!response.ok) {
+          throw new Error("Error al subir la imagen: " + response.statusText);
+        }
+
+        const result = await response.json();
+
+        // 👇 Pasar data al padre y redirigir
+        onCapture(result);
+        navigate("/album");
+
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+        }
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        setUploading(false);
+      }
+    }, "image/png");
   };
 
   const retakePhoto = () => {
@@ -76,15 +117,20 @@ export default function TakePhoto({ onCancel, onCapture }) {
 
   return (
     <div className="fixed inset-0 flex flex-col items-center justify-center bg-black bg-opacity-90 p-4 z-50">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={`rounded-lg shadow-lg max-w-full max-h-[70vh] ${hasPhoto ? "hidden" : "block"}`}
+      />
+      <canvas
+        ref={canvasRef}
+        className={`rounded-lg shadow-lg max-w-full max-h-[70vh] ${!hasPhoto ? "hidden" : "block"}`}
+      />
+
       {!hasPhoto ? (
-        <>
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="rounded-lg shadow-lg max-w-full max-h-[70vh]"
-          />
+        <div className="flex flex-col items-center">
           <button
             onClick={takePhoto}
             className="mt-6 bg-gradient-to-r from-orange to-orange/90 px-8 py-3 rounded-lg font-semibold text-white shadow-lg hover:from-orange/90 hover:to-orange transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-orange/50"
@@ -92,35 +138,37 @@ export default function TakePhoto({ onCancel, onCapture }) {
             Tomar foto
           </button>
           <button
+            onClick={() =>
+              setFacingMode((prev) => (prev === "user" ? "environment" : "user"))
+            }
+            className="mt-3 text-white underline focus:outline-none"
+          >
+            Cambiar cámara
+          </button>
+          <button
             onClick={handleCancel}
             className="mt-4 text-white underline focus:outline-none"
           >
             Cancelar
           </button>
-
-          <canvas ref={canvasRef} className="hidden" />
-        </>
+        </div>
       ) : (
-        <>
-          <canvas
-            ref={canvasRef}
-            className="rounded-lg shadow-lg max-w-full max-h-[70vh]"
-          />
-          <div className="flex gap-6 mt-6">
-            <button
-              onClick={confirmPhoto}
-              className="bg-green-light px-6 py-3 rounded-lg font-semibold text-white shadow-lg hover:bg-green-light/90 transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-light/50"
-            >
-              Confirmar
-            </button>
-            <button
-              onClick={retakePhoto}
-              className="bg-red-600 px-6 py-3 rounded-lg font-semibold text-white shadow-lg hover:bg-red-700 transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-700/50"
-            >
-              Volver a tomar
-            </button>
-          </div>
-        </>
+        <div className="flex flex-col items-center gap-6 mt-6">
+          <button
+            onClick={confirmPhoto}
+            disabled={uploading}
+            className="bg-green-light px-6 py-3 rounded-lg font-semibold text-white shadow-lg hover:bg-green-light/90 transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-green-light/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {uploading ? "Subiendo..." : "Confirmar"}
+          </button>
+          <button
+            onClick={retakePhoto}
+            disabled={uploading}
+            className="bg-red-600 px-6 py-3 rounded-lg font-semibold text-white shadow-lg hover:bg-red-700 transition transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-4 focus:ring-red-700/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Volver a tomar
+          </button>
+        </div>
       )}
     </div>
   );
