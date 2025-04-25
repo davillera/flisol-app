@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 
 export default function TakePhoto({ onCancel, onCapture }) {
   const videoRef = useRef(null);
@@ -7,7 +8,7 @@ export default function TakePhoto({ onCancel, onCapture }) {
   const streamRef = useRef(null);
   const [hasPhoto, setHasPhoto] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [facingMode, setFacingMode] = useState("environment"); // 🌟 trasera por defecto
+  const [facingMode, setFacingMode] = useState("environment");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,10 +24,10 @@ export default function TakePhoto({ onCancel, onCapture }) {
             videoRef.current.srcObject = stream;
           }
         } catch (err) {
-          alert("No se pudo acceder a la cámara: " + err.message);
+          Swal.fire("Error", "No se pudo acceder a la cámara: " + err.message, "error");
         }
       } else {
-        alert("Tu navegador no soporta acceso a cámara.");
+        Swal.fire("Error", "Tu navegador no soporta acceso a cámara.", "error");
       }
     }
 
@@ -57,7 +58,7 @@ export default function TakePhoto({ onCancel, onCapture }) {
     const height = videoRef.current.videoHeight;
 
     if (width === 0 || height === 0) {
-      alert("La cámara aún no está lista. Intenta de nuevo.");
+      Swal.fire("Espera", "La cámara aún no está lista. Intenta de nuevo.", "info");
       return;
     }
 
@@ -76,7 +77,7 @@ export default function TakePhoto({ onCancel, onCapture }) {
 
     canvasRef.current.toBlob(async (blob) => {
       if (!blob) {
-        alert("Error al generar la imagen.");
+        Swal.fire("Error", "Error al generar la imagen.", "error");
         setUploading(false);
         return;
       }
@@ -96,7 +97,8 @@ export default function TakePhoto({ onCancel, onCapture }) {
 
         const result = await response.json();
 
-        // 👇 Pasar data al padre y redirigir
+        Swal.fire("¡Éxito!", "La foto se ha subido correctamente.", "success");
+
         onCapture(result);
         navigate("/album");
 
@@ -104,7 +106,7 @@ export default function TakePhoto({ onCancel, onCapture }) {
           streamRef.current.getTracks().forEach((track) => track.stop());
         }
       } catch (error) {
-        alert(error.message);
+        Swal.fire("Error", error.message, "error");
       } finally {
         setUploading(false);
       }

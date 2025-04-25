@@ -27,7 +27,6 @@ function App() {
     setTakingPhoto(false);
     // Aquí puedes enviar la imagen al backend o mostrarla en la galería
     console.log("Foto capturada:", dataUrl);
-    alert("Foto capturada! Ahora puedes implementarla para subirla.");
   };
 
   return (
